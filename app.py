@@ -70,14 +70,18 @@ def fetch_weather_and_calculate_wbgt(api_key):
 # --- 3. 自動辨識金鑰與側邊欄設定 ---
 st.sidebar.header("🗺️ 查詢條件設定")
 
-# 【改寫關鍵】：優先從系統環境變數讀取 CWA_API_KEY，若無則為空字串
-env_api_key = os.getenv("CWA_API_KEY", "")
+# 【升級關鍵】：雙重檢查機制
+# 1. 先試著從 Streamlit 雲端後台的 Secrets 讀取
+# 2. 如果讀不到，再試著從 Linux/GitHub Actions 系統環境變數讀取
+api_key_from_secrets = st.secrets.get("CWA_API_KEY", "") if "CWA_API_KEY" in st.secrets else ""
+api_key_from_env = os.getenv("CWA_API_KEY", "")
+auto_api_key = api_key_from_secrets or api_key_from_env
 
 # 決定輸入框的預設值：若有 Secrets 環境變數就直接帶入，否則顯示範例文字
-default_key = env_api_key if env_api_key else "YOUR_CWA_API_KEY"
+default_key = auto_api_key if auto_api_key else "YOUR_CWA_API_KEY"
 
 API_KEY = st.sidebar.text_input(
-    "請輸入氣象署 API Key (若已設定系統變數可略過)", 
+    "請輸入氣象署 API Key (系統自動辨識中)", 
     value=default_key, 
     type="password"
 )
