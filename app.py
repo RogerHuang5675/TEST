@@ -1,6 +1,8 @@
 import os
 import streamlit as st
 import requests
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 import pandas as pd
 import numpy as np
 import folium
@@ -16,7 +18,7 @@ st.markdown("每日／每小時定時更新氣象署自動站資料，並依高�
 def fetch_weather_and_calculate_wbgt(api_key):
     # 使用 CWA 自動氣象站資料 API (O-A0003-001)
     url = f"https://opendata.cwa.gov.tw/api/v1/rest/datastore/O-A0003-001?Authorization={api_key}&format=JSON"
-    response = requests.get(url)
+    response = requests.get(url, verify=False, timeout=15)
     if response.status_code != 200:
         return pd.DataFrame()
     
