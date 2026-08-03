@@ -70,24 +70,29 @@ def fetch_weather_and_calculate_wbgt(api_key):
 # --- 3. 自動辨識金鑰與側邊欄設定 ---
 st.sidebar.header("🗺️ 查詢條件設定")
 
-# 【升級關鍵】：雙重檢查機制
-# 1. 先試著從 Streamlit 雲端後台的 Secrets 讀取
-# 2. 如果讀不到，再試著從 Linux/GitHub Actions 系統環境變數讀取
+# 1. 優先從後台 Secrets 或 Linux 系統環境變數讀取
 api_key_from_secrets = st.secrets.get("CWA_API_KEY", "") if "CWA_API_KEY" in st.secrets else ""
 api_key_from_env = os.getenv("CWA_API_KEY", "")
-auto_api_key = api_key_from_secrets or api_key_from_env
+backend_api_key = api_key_from_secrets or api_key_from_env
 
-# 決定輸入框的預設值：若有 Secrets 環境變數就直接帶入，否則顯示範例文字
-default_key = auto_api_key if auto_api_key else "YOUR_CWA_API_KEY"
-
-API_KEY = st.sidebar.text_input(
-    "請輸入氣象署 API Key (系統自動辨識中)", 
-    value=default_key, 
-    type="password"
-)
+# 2. 【安全關鍵機制】絕對不把 backend_api_key 放入前端 HTML 的 value 中！
+if backend_api_key:
+    # 情境 A：若雲端後台已有設定，直接後端使用，前端僅顯示綠色安全狀態提示
+    st.sidebar.success("✅ 系統已安全載入中央氣象署授權碼")
+    API_KEY = backend_api_key
+else:
+    # 情境 B：若後台未設定，才顯示空白密碼輸入框，供外部使用者手動輸入「自己的」金鑰
+    st.sidebar.info("💡 目前系統未偵測到後台金鑰，請手動輸入")
+    API_KEY = st.sidebar.text_input(
+        "請輸入氣象署 API Key", 
+        value="", 
+        type="password",
+        help="輸入您個人申請的 CWA API Key 以載入即時地圖資料。"
+    )
 
 # --- 4. 檢查金鑰並顯示地圖或錯誤訊息 ---
-if API_KEY and API_KEY != "YOUR_CWA_API_KEY":
+# 判斷授權碼是否已成功取得且不為空白
+if API_KEY:
     df = fetch_weather_and_calculate_wbgt(API_KEY)
     
     if not df.empty:
@@ -138,6 +143,6 @@ if API_KEY and API_KEY != "YOUR_CWA_API_KEY":
             st.dataframe(top_hazard, hide_index=True)
             
     else:
-        st.error("無法正確下載氣象資料！請確認您的 API Key 是否正確，或氣象署 API 是否連線正常。")
+        st.error("無法正確下載氣象資料！請確認 API Key 是否有效，或氣象署連線是否正常。")
 else:
-    st.info("💡 系統未偵測到環境變數金鑰！請至側邊欄輸入有效的中央氣象署授權 API Key 即可載入即時熱危害地圖。")
+    st.warning("⚠️ 請至左側邊欄輸入有效的中央氣象署授權 API Key 以載入熱危害即時分布地圖。")
