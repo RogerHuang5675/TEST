@@ -67,21 +67,26 @@ def fetch_weather_and_calculate_wbgt(api_key):
             
     return pd.DataFrame(records)
 
-# --- 3. 自動辨識金鑰與側邊欄設定 ---
+# --- 3. 安全處理金鑰與側邊欄設定 ---
 st.sidebar.header("🗺️ 查詢條件設定")
 
 # 1. 優先從後台 Secrets 或 Linux 系統環境變數讀取
-api_key_from_secrets = st.secrets.get("CWA_API_KEY", "") if "CWA_API_KEY" in st.secrets else ""
+api_key_from_secrets = ""
+try:
+    # 加上 try 保護！避免 GitHub Actions 找不到 Streamlit 檔案而報錯當機
+    if "CWA_API_KEY" in st.secrets:
+        api_key_from_secrets = st.secrets.get("CWA_API_KEY", "")
+except Exception:
+    api_key_from_secrets = ""
+
 api_key_from_env = os.getenv("CWA_API_KEY", "")
 backend_api_key = api_key_from_secrets or api_key_from_env
 
 # 2. 【安全關鍵機制】絕對不把 backend_api_key 放入前端 HTML 的 value 中！
 if backend_api_key:
-    # 情境 A：若雲端後台已有設定，直接後端使用，前端僅顯示綠色安全狀態提示
     st.sidebar.success("✅ 系統已安全載入中央氣象署授權碼")
     API_KEY = backend_api_key
 else:
-    # 情境 B：若後台未設定，才顯示空白密碼輸入框，供外部使用者手動輸入「自己的」金鑰
     st.sidebar.info("💡 目前系統未偵測到後台金鑰，請手動輸入")
     API_KEY = st.sidebar.text_input(
         "請輸入氣象署 API Key", 
